@@ -1,3 +1,261 @@
-<div>
-    캘린더
+<html lang='en'>
+<head>
+    <meta charset='utf-8' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/index.global.min.js'></script>
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 40px;
+        }
+
+<!--        #calendar {-->
+<!--          max-width: 900px;-->
+<!--          margin: auto;-->
+<!--        }-->
+
+        /* 모달 스타일 */
+        #eventModal {
+          display: none;
+          position: fixed;
+          z-index: 1000;
+          left: 0; top: 0;
+          width: 100%; height: 100%;
+          background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        #modalContent {
+          background-color: #fff;
+          margin: 15% auto;
+          padding: 20px;
+          width: 300px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        #modalContent input {
+          width: 100%;
+          padding: 6px;
+          margin-bottom: 10px;
+        }
+
+        #modalButtons {
+          text-align: right;
+        }
+
+        #modalButtons button {
+          margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+<div id='calendar'></div>
+<div id="eventModal">
+    <div id="modalContent">
+        <h3>일정 추가</h3>
+        <input type="text" id="eventTitle" placeholder="일정 제목" />
+        <input type="text" id="eventTeam" placeholder="단위과제명" />
+        <textarea id="eventContent" placeholder="내용" rows="3"></textarea>
+        <input type="time" id="eventStartTime" />
+        <input type="time" id="eventEndTime" />
+        <div id="modalButtons">
+            <button id="cancelBtn">취소</button>
+            <button id="saveBtn">저장</button>
+        </div>
+    </div>
 </div>
+
+<div id="viewModal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%);
+  background:white; padding:20px; border:1px solid #ccc; border-radius:8px; z-index:2000; width:300px;">
+    <h3 id="viewTitle">제목</h3>
+    <p><strong>단위과제명</strong>:</strong> <span id="viewTeam"></span></p>
+    <p><strong>시간:</strong> <span id="viewTime"></span></p>
+    <p><strong>내용:</strong></p>
+    <p id="viewContent"></p>
+    <div style="text-align: right;">
+        <button id="editBtn">수정</button>
+        <button id="deleteBtn" style="margin-left: 8px;">삭제</button>
+        <button onclick="document.getElementById('viewModal').style.display='none'" style="margin-left: 8px;">닫기</button>
+    </div>
+</div>
+
+</body>
+<script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    const modal = document.getElementById('eventModal');
+    const titleInput = document.getElementById('eventTitle');
+    const startInput = document.getElementById('eventStartTime');
+    const endInput = document.getElementById('eventEndTime');
+    const saveBtn = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        locale: 'ko',
+        events: '/api/events', // Spring Boot API와 연결
+ eventContent: function(info) {
+  const team = info.event.extendedProps.team || '';
+  const title = info.event.title || '';
+  const start = new Date(info.event.start);
+  const end = new Date(info.event.end);
+
+  // 시간만 포맷 (예: 09:00)
+  const formatTime = (date) => {
+      const hours = date.getHours();
+    const minutes = date.getMinutes();
+
+    const isAM = hours < 12;
+    const ampm = isAM ? '오전' : '오후';
+
+    return date.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+  };
+
+  const timeRange = `${formatTime(start)} ~ ${formatTime(end)}`;
+
+  return {
+    html: `
+    <div style="
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;">
+      <div style="font-weight:bold;">(${team}) ${title}</div>
+      <div style="font-size: 0.85em; color: #FFFFFF;">${timeRange}</div>
+      </div>
+    `
+  };
+},
+        editable: true,
+        selectable: true,
+        eventClick: function(info) {
+  const event = info.event;
+
+  const title = event.title || '';
+  const team = event.extendedProps.team || '';
+  const content = event.extendedProps.content || '';
+  const start = new Date(event.start);
+  const end = new Date(event.end);
+
+  const formatTime = (date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours < 12 ? '오전' : '오후';
+    const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+    return `${ampm} ${hour12}시 ${minutes.toString().padStart(2, '0')}분`;
+  };
+
+  document.getElementById('viewTitle').textContent = title;
+  document.getElementById('viewTeam').textContent = team;
+  document.getElementById('viewTime').textContent = `${formatTime(start)} ~ ${formatTime(end)}`;
+  document.getElementById('viewContent').textContent = content;
+
+  // 삭제 버튼
+  document.getElementById('deleteBtn').onclick = () => {
+    if (confirm('이 일정을 삭제하시겠습니까?')) {
+      fetch(`/api/events/${event.id}`, { method: 'DELETE' })
+        .then(() => {
+          calendar.refetchEvents();  // 다시 로드
+          document.getElementById('viewModal').style.display = 'none';
+        });
+    }
+  };
+
+  // 수정 버튼
+  document.getElementById('editBtn').onclick = () => {
+    // 예시: 기존 일정 모달을 수정 모드로 열고, 기존 값 채워넣기
+    openEditModal(event);
+    document.getElementById('viewModal').style.display = 'none'; // 상세 모달 닫기
+  };
+
+  document.getElementById('viewModal').style.display = 'block';
+},
+        eventDidMount: (info) => {
+  const team = info.event.extendedProps.team || '';
+  let bgColor = '#013682'; // 기본색
+
+  if (team.startsWith('1-1')) {
+    bgColor = '#d7a4be'; // 분홍
+  } else if (team.startsWith('1-2')) {
+    bgColor = '#e45965';
+  } else if (team.startsWith('1-3')) {
+    bgColor = '#c14473';
+  } else if (team.startsWith('3-1')) {
+    bgColor = '#49a587';
+  }else if (team.startsWith('3-2')) {
+      bgColor = '#248457';
+  } // 초록
+   else if (team.startsWith('4-1')) {
+    bgColor = '#dcab65';
+   }
+   else if(team.startsWith('4-5')){
+    bgColor = '#b97924'; // 황토
+  }
+
+  // 배경색 적용
+  info.el.style.backgroundColor = bgColor;
+  info.el.style.borderColor = bgColor;
+
+  // 글자색도 명확하게 보이도록 설정 (선택)
+  info.el.style.color = '#ffffff';
+},
+        select: function(info) {
+        selectedDate = info.startStr.split("T")[0]; // 날짜만 저장
+        titleInput.value = '';
+        startInput.value = '09:00';
+        endInput.value = '10:00';
+        modal.style.display = 'block';
+}
+});
+
+    eventClick: (info) => {
+        if (confirm('이 일정을 삭제하시겠습니까?')) {
+          fetch(`/api/events/${info.event.id}`, { method: 'DELETE' })
+            .then(() => calendar.refetchEvents());
+        }
+      }
+      calendar.render();
+
+      saveBtn.onclick = () => {
+      const title = titleInput.value;
+      const team = document.getElementById('eventTeam').value;
+      const content = document.getElementById('eventContent').value;
+      const startTime = startInput.value;
+      const endTime = endInput.value;
+
+      if (!title || !startTime || !endTime) {
+        alert('모든 항목을 입력해주세요.');
+        return;
+      }
+
+      const start = `${selectedDate}T${startTime}:00`;
+      const end = `${selectedDate}T${endTime}:00`;
+
+      fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title,
+          team: team,
+          content: content,
+          start: start,
+          end: end
+        })
+      }).then(() => {
+        modal.style.display = 'none';
+        calendar.refetchEvents();
+      });
+    };
+
+    cancelBtn.onclick = function () {
+      modal.style.display = 'none';
+    };
+  });
+
+</script>
+</html>
