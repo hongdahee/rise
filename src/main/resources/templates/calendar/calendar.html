@@ -90,10 +90,10 @@
     const saveBtn = document.getElementById('saveBtn');
     const cancelBtn = document.getElementById('cancelBtn');
 
-      var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
-        locale: 'ko',
-        events: '/api/events', // Spring Boot API와 연결
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'timeGridWeek',
+    locale: 'ko',
+    events: '/api/events', // Spring Boot API와 연결
  eventContent: function(info) {
   const team = info.event.extendedProps.team || '';
   const title = info.event.title || '';
@@ -165,6 +165,59 @@
         });
     }
   };
+
+
+  function openEditModal(event) {
+  const modal = document.getElementById('eventModal');
+  const titleInput = document.getElementById('eventTitle');
+  const teamInput = document.getElementById('eventTeam');
+  const contentInput = document.getElementById('eventContent');
+  const startInput = document.getElementById('eventStartTime');
+  const endInput = document.getElementById('eventEndTime');
+  const saveBtn = document.getElementById('saveBtn');
+
+  // 기존 데이터 채우기
+  titleInput.value = event.title || '';
+  teamInput.value = event.extendedProps.team || '';
+  contentInput.value = event.extendedProps.content || '';
+  startInput.value = event.start.toISOString().slice(11, 16); // HH:MM
+  endInput.value = event.end.toISOString().slice(11, 16); // HH:MM
+console.log(event.start);
+  modal.style.display = 'block';
+
+  // 기존 saveBtn 이벤트 제거 후 새로운 수정 이벤트 바인딩
+  const newSaveBtn = saveBtn.cloneNode(true);
+  saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+
+  newSaveBtn.onclick = () => {
+    const updatedTitle = titleInput.value;
+    const updatedTeam = teamInput.value;
+    const updatedContent = contentInput.value;
+    const updatedStart = `${event.start.toISOString().slice(0, 10)}T${startInput.value}:00`;
+    const updatedEnd = `${event.start.toISOString().slice(0, 10)}T${endInput.value}:00`;
+
+    if (!updatedTitle || !startInput.value || !endInput.value) {
+      alert('모든 항목을 입력해주세요.');
+      return;
+    }
+
+    fetch(`/api/events/${event.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: updatedTitle,
+        team: updatedTeam,
+        content: updatedContent,
+        start: updatedStart,
+        end: updatedEnd
+      })
+    }).then(() => {
+      modal.style.display = 'none';
+      calendar.refetchEvents();
+    });
+  };
+}
+
 
   // 수정 버튼
   document.getElementById('editBtn').onclick = () => {
