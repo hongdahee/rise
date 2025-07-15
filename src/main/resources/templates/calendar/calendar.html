@@ -93,6 +93,7 @@
     var calendar = new FullCalendar.Calendar(calendarEl, {
     initialView: 'timeGridWeek',
     locale: 'ko',
+    timeZone: 'local',
     events: '/api/events', // Spring Boot API와 연결
  eventContent: function(info) {
   const team = info.event.extendedProps.team || '';
@@ -133,6 +134,85 @@
 },
         editable: true,
         selectable: true,
+eventDrop: function(info) {
+  const event = info.event;
+
+  // 📌 날짜는 UTC 말고 로컬 기준으로 생성
+  const datePart = [
+    event.start.getFullYear(),
+    (event.start.getMonth() + 1).toString().padStart(2, '0'),
+    event.start.getDate().toString().padStart(2, '0')
+  ].join('-');
+
+  const hours = event.start.getHours().toString().padStart(2, '0');
+  const minutes = event.start.getMinutes().toString().padStart(2, '0');
+  const start = `${datePart}T${hours}:${minutes}:00`;
+
+  const endHours = event.end ? event.end.getHours().toString().padStart(2, '0') : hours;
+  const endMinutes = event.end ? event.end.getMinutes().toString().padStart(2, '0') : minutes;
+  const end = `${datePart}T${endHours}:${endMinutes}:00`;
+
+  fetch(`/api/events/${event.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: event.title,
+      team: event.extendedProps.team,
+      content: event.extendedProps.content,
+      start: start,
+      end: end
+    })
+  }).then(res => {
+    if (!res.ok) {
+      alert('일정 이동에 실패했습니다.');
+      info.revert();
+    }
+  }).catch(err => {
+    console.error(err);
+    alert('서버 오류가 발생했습니다.');
+    info.revert();
+  });
+},
+
+eventResize: function(info) {
+  const event = info.event;
+
+  // 📌 날짜는 UTC 말고 로컬 기준으로 생성
+  const datePart = [
+    event.start.getFullYear(),
+    (event.start.getMonth() + 1).toString().padStart(2, '0'),
+    event.start.getDate().toString().padStart(2, '0')
+  ].join('-');
+
+  const hours = event.start.getHours().toString().padStart(2, '0');
+  const minutes = event.start.getMinutes().toString().padStart(2, '0');
+  const start = `${datePart}T${hours}:${minutes}:00`;
+
+  const endHours = event.end ? event.end.getHours().toString().padStart(2, '0') : hours;
+  const endMinutes = event.end ? event.end.getMinutes().toString().padStart(2, '0') : minutes;
+  const end = `${datePart}T${endHours}:${endMinutes}:00`;
+
+  fetch(`/api/events/${event.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: event.title,
+      team: event.extendedProps.team,
+      content: event.extendedProps.content,
+      start: start,
+      end: end
+    })
+  }).then(res => {
+    if (!res.ok) {
+      alert('일정 이동에 실패했습니다.');
+      info.revert();
+    }
+  }).catch(err => {
+    console.error(err);
+    alert('서버 오류가 발생했습니다.');
+    info.revert();
+  });
+},
         eventClick: function(info) {
   const event = info.event;
 
@@ -180,9 +260,14 @@
   titleInput.value = event.title || '';
   teamInput.value = event.extendedProps.team || '';
   contentInput.value = event.extendedProps.content || '';
-  startInput.value = event.start.toISOString().slice(11, 16); // HH:MM
-  endInput.value = event.end.toISOString().slice(11, 16); // HH:MM
-console.log(event.start);
+  // 유틸 함수: 시/분을 항상 두 자리로 포맷
+function pad(num) {
+  return num.toString().padStart(2, '0');
+}
+
+startInput.value = `${pad(event.start.getHours())}:${pad(event.start.getMinutes())}`;
+endInput.value = `${pad(event.end.getHours())}:${pad(event.end.getMinutes())}`;
+
   modal.style.display = 'block';
 
   // 기존 saveBtn 이벤트 제거 후 새로운 수정 이벤트 바인딩
