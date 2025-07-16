@@ -32,7 +32,7 @@
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
-        #modalContent input {
+        #modalContentInput {
           width: 100%;
           padding: 6px;
           margin-bottom: 10px;
@@ -52,11 +52,15 @@
 <div id="eventModal">
     <div id="modalContent">
         <h3>일정 추가</h3>
-        <input type="text" id="eventTitle" placeholder="일정 제목" />
-        <input type="text" id="eventTeam" placeholder="단위과제명" />
-        <textarea id="eventContent" placeholder="내용" rows="3"></textarea>
-        <input type="time" id="eventStartTime" />
-        <input type="time" id="eventEndTime" />
+        <input type="text" id="eventTeam modalContentInput" placeholder="단위과제명(ex) 1-1)" />
+        <input type="text" id="eventTitle modalContentInput" placeholder="일정 제목" />
+        <textarea style="margin-bottom: 10px; width: 100%; padding: 6px;" id="eventContent" placeholder="내용" rows="3"></textarea>
+        <label>하루 종일 <input type="checkbox" id="allDayCheckbox" />
+        </label>
+        <div style="font-size: 15px;">시작시간</div>
+        <input type="time" id="eventStartTime modalContentInput" />
+        <div style="font-size: 15px;">종료시간</div>
+        <input type="time" id="eventEndTime modalContentInput" />
         <div id="modalButtons">
             <button id="cancelBtn">취소</button>
             <button id="saveBtn">저장</button>
@@ -69,7 +73,7 @@
     <h3 id="viewTitle">제목</h3>
     <p><strong>단위과제명</strong>:</strong> <span id="viewTeam"></span></p>
     <p><strong>시간:</strong> <span id="viewTime"></span></p>
-    <p><strong>내용:</strong></p>
+    <p style="margin-bottom: 10px; width: 100%; padding: 6px;"><strong>내용:</strong></p>
     <p id="viewContent"></p>
     <div style="text-align: right;">
         <button id="editBtn">수정</button>
@@ -77,7 +81,7 @@
         <button onclick="document.getElementById('viewModal').style.display='none'" style="margin-left: 8px;">닫기</button>
     </div>
 </div>
-
+<div style="margin-top:5px">* 모바일에서 캘린더 선택할 때 터치가 안 된다면 2초 정도 길게 터치해 주세요.</div>
 </body>
 <script>
 
@@ -92,6 +96,22 @@
 
     var calendar = new FullCalendar.Calendar(calendarEl, {
     initialView: 'timeGridWeek',
+      headerToolbar: {
+    left: 'prev,next today',
+    center: 'title',
+    right: 'dayGridMonth,timeGridWeek,timeGridDay' // 버튼 추가
+  },
+  views: {
+    dayGridMonth: {
+      buttonText: '월간'
+    },
+    timeGridWeek: {
+      buttonText: '주간'
+    },
+    timeGridDay: {
+      buttonText: '일간'
+    }
+  },
     locale: 'ko',
     timeZone: 'local',
     events: '/api/events', // Spring Boot API와 연결
@@ -306,7 +326,7 @@ endInput.value = `${pad(event.end.getHours())}:${pad(event.end.getMinutes())}`;
 
   // 수정 버튼
   document.getElementById('editBtn').onclick = () => {
-    // 예시: 기존 일정 모달을 수정 모드로 열고, 기존 값 채워넣기
+    // 기존 일정 모달을 수정 모드로 열고, 기존 값 채워넣기
     openEditModal(event);
     document.getElementById('viewModal').style.display = 'none'; // 상세 모달 닫기
   };
@@ -339,10 +359,10 @@ endInput.value = `${pad(event.end.getHours())}:${pad(event.end.getMinutes())}`;
   info.el.style.backgroundColor = bgColor;
   info.el.style.borderColor = bgColor;
 
-  // 글자색도 명확하게 보이도록 설정 (선택)
   info.el.style.color = '#ffffff';
 },
         select: function(info) {
+        document.getElementById('eventContent').value = '';
         selectedDate = info.startStr.split("T")[0]; // 날짜만 저장
         titleInput.value = '';
         startInput.value = '09:00';

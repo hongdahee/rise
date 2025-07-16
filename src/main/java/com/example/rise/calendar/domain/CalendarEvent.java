@@ -28,4 +28,6 @@ public class CalendarEvent {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss", timezone = "Asia/Seoul")
     private LocalDateTime end;
 
+    private Boolean isAllDay;
+
 }
