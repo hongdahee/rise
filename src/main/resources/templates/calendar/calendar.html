@@ -32,7 +32,7 @@
           box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
-        #modalContentInput {
+        #modalContent input {
           width: 100%;
           padding: 6px;
           margin-bottom: 10px;
@@ -52,15 +52,15 @@
 <div id="eventModal">
     <div id="modalContent">
         <h3>일정 추가</h3>
-        <input type="text" id="eventTeam modalContentInput" placeholder="단위과제명(ex) 1-1)" />
-        <input type="text" id="eventTitle modalContentInput" placeholder="일정 제목" />
+        <input type="text" id="eventTeam" placeholder="단위과제명(ex) 1-1)" />
+        <input type="text" id="eventTitle" placeholder="일정 제목" />
         <textarea style="margin-bottom: 10px; width: 100%; padding: 6px;" id="eventContent" placeholder="내용" rows="3"></textarea>
-        <label>하루 종일 <input type="checkbox" id="allDayCheckbox" />
-        </label>
+        <div id="eventTime">
         <div style="font-size: 15px;">시작시간</div>
-        <input type="time" id="eventStartTime modalContentInput" />
+        <input type="time" id="eventStartTime" />
         <div style="font-size: 15px;">종료시간</div>
-        <input type="time" id="eventEndTime modalContentInput" />
+        <input type="time" id="eventEndTime" />
+        </div>
         <div id="modalButtons">
             <button id="cancelBtn">취소</button>
             <button id="saveBtn">저장</button>
@@ -73,7 +73,7 @@
     <h3 id="viewTitle">제목</h3>
     <p><strong>단위과제명</strong>:</strong> <span id="viewTeam"></span></p>
     <p><strong>시간:</strong> <span id="viewTime"></span></p>
-    <p style="margin-bottom: 10px; width: 100%; padding: 6px;"><strong>내용:</strong></p>
+    <p style="margin-bottom: 10px; width: 100%;"><strong>내용:</strong></p>
     <p id="viewContent"></p>
     <div style="text-align: right;">
         <button id="editBtn">수정</button>
@@ -233,7 +233,7 @@ eventResize: function(info) {
     info.revert();
   });
 },
-        eventClick: function(info) {
+  eventClick: function(info) {
   const event = info.event;
 
   const title = event.title || '';
@@ -266,7 +266,6 @@ eventResize: function(info) {
     }
   };
 
-
   function openEditModal(event) {
   const modal = document.getElementById('eventModal');
   const titleInput = document.getElementById('eventTitle');
@@ -298,8 +297,24 @@ endInput.value = `${pad(event.end.getHours())}:${pad(event.end.getMinutes())}`;
     const updatedTitle = titleInput.value;
     const updatedTeam = teamInput.value;
     const updatedContent = contentInput.value;
-    const updatedStart = `${event.start.toISOString().slice(0, 10)}T${startInput.value}:00`;
-    const updatedEnd = `${event.start.toISOString().slice(0, 10)}T${endInput.value}:00`;
+    let updatedStart, updatedEnd;
+
+function toLocalDateString(date) {
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+}
+
+
+const selectedDate = event.start.toISOString().slice(0, 10);
+
+    const dateStr = toLocalDateString(event.start);
+    updatedStart = `${dateStr}T${startInput.value}:00`;
+    updatedEnd = `${dateStr}T${endInput.value}:00`;
+
+    if (!startInput.value || !endInput.value) {
+        alert('모든 항목을 입력해주세요.');
+        return;
+    }
 
     if (!updatedTitle || !startInput.value || !endInput.value) {
       alert('모든 항목을 입력해주세요.');
@@ -362,6 +377,7 @@ endInput.value = `${pad(event.end.getHours())}:${pad(event.end.getMinutes())}`;
   info.el.style.color = '#ffffff';
 },
         select: function(info) {
+
         document.getElementById('eventContent').value = '';
         selectedDate = info.startStr.split("T")[0]; // 날짜만 저장
         titleInput.value = '';
@@ -380,19 +396,31 @@ endInput.value = `${pad(event.end.getHours())}:${pad(event.end.getMinutes())}`;
       calendar.render();
 
       saveBtn.onclick = () => {
+
+        const allDayCheckbox = document.getElementById('allDayCheckbox');
+        const eventTimeDiv = document.getElementById('eventTime');
+
+       let start, end;
+       const startTime = startInput.value;
+       const endTime = endInput.value;
+
       const title = titleInput.value;
       const team = document.getElementById('eventTeam').value;
       const content = document.getElementById('eventContent').value;
-      const startTime = startInput.value;
-      const endTime = endInput.value;
 
-      if (!title || !startTime || !endTime) {
+    start = `${selectedDate}T${startTime}:00`;
+    end = `${selectedDate}T${endTime}:00`;
+
+    if (!startTime || !endTime) {
         alert('모든 항목을 입력해주세요.');
         return;
-      }
+    }
 
-      const start = `${selectedDate}T${startTime}:00`;
-      const end = `${selectedDate}T${endTime}:00`;
+
+      if (!title) {
+        alert('일정 제목을 입력해주세요.');
+        return;
+      }
 
       fetch('/api/events', {
         method: 'POST',

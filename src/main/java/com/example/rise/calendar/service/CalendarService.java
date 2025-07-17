@@ -31,6 +31,7 @@ public class CalendarService {
         calendarEvent.setContent(eventContent.getContent());
         calendarEvent.setStart(eventContent.getStart());
         calendarEvent.setEnd(eventContent.getEnd());
+//        calendarEvent.setIsAllDay(eventContent.getIsAllDay());
         return calendarRepository.save(calendarEvent);
     }
 
@@ -41,6 +42,7 @@ public class CalendarService {
         event.setContent(eventContent.getContent());
         event.setStart(eventContent.getStart());
         event.setEnd(eventContent.getEnd());
+//        event.setIsAllDay(eventContent.getIsAllDay());
         return calendarRepository.save(event);
     }
 
